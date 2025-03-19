@@ -1,0 +1,14 @@
+{
+  "name": "dynamodb-airtable-migration",
+  "version": "1.0.0",
+  "description": "Migration and linking tool for transferring data from Airtable to DynamoDB",
+  "main": "link-tables.js",
+  "scripts": {
+    "start": "node link-tables.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/lib-dynamodb": "^3.0.0",
+    "dotenv": "^16.0.0"
+  }
+}
