@@ -1,0 +1,13 @@
+{
+  "name": "browser-tools-mcp",
+  "version": "1.0.0",
+  "description": "Browser tools MCP server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "puppeteer": "^21.3.8"
+  }
+}

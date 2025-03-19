@@ -4,7 +4,8 @@
   "description": "Migration and linking tool for transferring data from Airtable to DynamoDB",
   "main": "link-tables.js",
   "scripts": {
-    "start": "node link-tables.js"
+    "start": "node link-tables.js",
+    "start-mcp": "node start-mcp-servers.js"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.0.0",
