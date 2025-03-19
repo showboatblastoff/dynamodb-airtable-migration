@@ -1,0 +1,1150 @@
+{
+    "name": "business-dispute-rag",
+    "nodes": [
+      {
+        "parameters": {
+          "mode": "raw",
+          "jsonOutput": "={\n  \"data\": {{JSON.stringify($json.text)}}\n}\n",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          2060,
+          820
+        ],
+        "id": "cb8cf13a-dad3-4c4f-90db-19ec3eaa2a56",
+        "name": "PDF TO DATA"
+      },
+      {
+        "parameters": {
+          "mode": "raw",
+          "jsonOutput": "={\n  \"data\": {{ JSON.stringify($json.data) }}\n}\n",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          2200,
+          880
+        ],
+        "id": "b5095fc4-652c-4a3e-9227-dbe9510e5897",
+        "name": "Document Data"
+      },
+      {
+        "parameters": {
+          "pollTimes": {
+            "item": [
+              {
+                "mode": "everyMinute"
+              }
+            ]
+          },
+          "triggerOn": "specificFolder",
+          "folderToWatch": {
+            "__rl": true,
+            "value": "1hWm6kljbur5Ls4cT61foH02Jf0JIe6SL",
+            "mode": "list",
+            "cachedResultName": "Business Dispute Evidence",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1hWm6kljbur5Ls4cT61foH02Jf0JIe6SL"
+          },
+          "event": "fileCreated",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.googleDriveTrigger",
+        "typeVersion": 1,
+        "position": [
+          960,
+          820
+        ],
+        "id": "a6bafa66-aabd-46d2-a39d-de58963ec260",
+        "name": "Evidence Trigger",
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "0iM7Yi0T78v5LaYt",
+            "name": "Google Drive account 2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "fieldToSplitOut": "chunks",
+          "options": {
+            "destinationFieldName": "chunk"
+          }
+        },
+        "type": "n8n-nodes-base.splitOut",
+        "typeVersion": 1,
+        "position": [
+          2460,
+          880
+        ],
+        "id": "6f80b302-a8ed-47f4-aa96-724be8241cad",
+        "name": "Split Chunks"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=<document> \n{{ $('Document Data').item.json.data }}\n</document> \n\nHere is the chunk we want to situate within the overall document:\n\n<chunk> \n{{$json.chunk}} \n</chunk> \n\nThis is evidence in a business dispute case involving misappropriation of funds and breach of fiduciary duty. Please:\n\n- Provide a short and succinct **context** to situate this chunk within the document for improved search retrieval.\n- Include any dates, monetary amounts, persons (JZ, LG, etc.), or businesses mentioned.\n- Return the **original chunk** exactly as provided unless a correction is necessary.\n- If the chunk contains an **incomplete number, percentage, or entity**, correct it using the full document.\n- If part of a **sentence is cut off**, reconstruct the missing words only if necessary for clarity.\n- If the chunk is part of a table, include the complete table entry to maintain data integrity.\n- For emails, include sender, recipient, date, and subject if available.\n- For text messages, include sender, recipient, date if available.\n\nFill in the following format:\n[succinct context with dates and entities] : [original chunk or corrected version if necessary]"
+        },
+        "type": "@n8n/n8n-nodes-langchain.chainLlm",
+        "typeVersion": 1.5,
+        "position": [
+          2680,
+          880
+        ],
+        "id": "ebecf2a6-d9ad-49f1-8929-0951eda2440a",
+        "name": "Evidence Context Chain"
+      },
+      {
+        "parameters": {
+          "modelName": "models/gemini-2.0-flash",
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+        "typeVersion": 1,
+        "position": [
+          2600,
+          1060
+        ],
+        "id": "2bc40cd0-cad1-4550-aee0-4b7c9e87ca08",
+        "name": "Google Gemini Chat Model",
+        "credentials": {
+          "googlePalmApi": {
+            "id": "etAmdLqAADpgwJzo",
+            "name": "Google Gemini(PaLM) Api account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "fieldsToSummarize": {
+            "values": [
+              {
+                "aggregation": "concatenate",
+                "field": "text",
+                "separateBy": "other",
+                "customSeparator": " ###SPLIT### "
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.summarize",
+        "typeVersion": 1.1,
+        "position": [
+          2960,
+          880
+        ],
+        "id": "9534b703-07d2-41a5-90e0-75b0cb8912fb",
+        "name": "Summarize"
+      },
+      {
+        "parameters": {
+          "separator": " ###SPLIT### ",
+          "chunkSize": 1200
+        },
+        "type": "@n8n/n8n-nodes-langchain.textSplitterCharacterTextSplitter",
+        "typeVersion": 1,
+        "position": [
+          3020,
+          1420
+        ],
+        "id": "2d459064-bc09-4f33-acc1-79a09d42429f",
+        "name": "Character Text Splitter"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "value": "o3-mini",
+            "mode": "list",
+            "cachedResultName": "o3-mini"
+          },
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "typeVersion": 1.2,
+        "position": [
+          1260,
+          1040
+        ],
+        "id": "4827a206-5a30-493b-a0b5-70016b07d633",
+        "name": "OpenAI Chat Model2",
+        "credentials": {
+          "openAiApi": {
+            "id": "Z1j4LkMhoEv4iLCS",
+            "name": "OpenAi account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "10646eae-ae46-4327-a4dc-9987c2d76173",
+                "name": "file_id",
+                "value": "={{ $('Evidence Trigger').item.json.id }}",
+                "type": "string"
+              },
+              {
+                "id": "f4536df5-d0b1-4392-bf17-b8137fb31a44",
+                "name": "file_type",
+                "value": "={{ $('Evidence Trigger').item.json.mimeType }}",
+                "type": "string"
+              },
+              {
+                "id": "9bde4d7f-e4f3-4ebd-9338-dce1350f9eab",
+                "name": "file_url",
+                "value": "={{ $('Evidence Trigger').item.json.webViewLink }}",
+                "type": "string"
+              },
+              {
+                "id": "77d782de-169d-4a46-8a8e-a3831c04d90f",
+                "name": "file_title",
+                "value": "={{ $('Evidence Trigger').item.json.name }}",
+                "type": "string"
+              },
+              {
+                "id": "8c444ba2-e384-45a3-9492-3c9d21b82cd5",
+                "name": "namespace",
+                "value": "={{ $json.output.namespace }}",
+                "type": "string"
+              },
+              {
+                "id": "a1b2c3d4-5e6f-7g8h-9i0j-k1l2m3n4o5p6",
+                "name": "event_date",
+                "value": "={{ $json.output.event_date || '' }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "af020cd8-3541-4090-9435-665abfd75be1",
+        "name": "EVIDENCE FILE INFO",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1520,
+          880
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "download",
+          "fileId": {
+            "__rl": true,
+            "value": "={{ $json.file_id }}",
+            "mode": "id"
+          },
+          "options": {
+            "googleFileConversion": {
+              "conversion": {
+                "docsToFormat": "text/plain"
+              }
+            }
+          }
+        },
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          1640,
+          880
+        ],
+        "id": "0f647b05-6afe-4f85-969f-62ca79c7f92d",
+        "name": "EVIDENCE GOOGLE DRIVE",
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "0iM7Yi0T78v5LaYt",
+            "name": "Google Drive account 2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 1
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $('EVIDENCE FILE INFO').item.json.file_type }}",
+                      "rightValue": "application/pdf",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "id": "8d105126-f9ee-4b83-9afb-8f410c455124"
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 1
+                  },
+                  "conditions": [
+                    {
+                      "id": "b69f5605-0179-4b02-9a32-e34bb085f82d",
+                      "leftValue": "={{ $('EVIDENCE FILE INFO').item.json.file_type }}",
+                      "rightValue": "text/plain",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals",
+                        "name": "filter.operator.equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 1
+                  },
+                  "conditions": [
+                    {
+                      "id": "e12f4567-89ab-cdef-0123-456789abcdef",
+                      "leftValue": "={{ $('EVIDENCE FILE INFO').item.json.file_type }}",
+                      "rightValue": "message/rfc822",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 1
+                  },
+                  "conditions": [
+                    {
+                      "id": "f23g4567-89ab-cdef-0123-456789abcdef",
+                      "leftValue": "={{ $('EVIDENCE FILE INFO').item.json.file_type }}",
+                      "rightValue": "audio/mp3",
+                      "operator": {
+                        "type": "string",
+                        "operation": "contains"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 1
+                  },
+                  "conditions": [
+                    {
+                      "id": "h34i5678-89ab-cdef-0123-456789abcdef",
+                      "leftValue": "={{ $('EVIDENCE FILE INFO').item.json.file_type }}",
+                      "rightValue": "video/mp4",
+                      "operator": {
+                        "type": "string",
+                        "operation": "contains"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 1
+                  },
+                  "conditions": [
+                    {
+                      "id": "i45j6789-89ab-cdef-0123-456789abcdef",
+                      "leftValue": "={{ $('EVIDENCE FILE INFO').item.json.file_type }}",
+                      "rightValue": "image/",
+                      "operator": {
+                        "type": "string",
+                        "operation": "contains"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "d257b253-0b26-4da3-82ae-adee0fe766d5",
+        "name": "EVIDENCE TYPE SWITCH",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3,
+        "position": [
+          1780,
+          880
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "pdf",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.extractFromFile",
+        "typeVersion": 1,
+        "position": [
+          1920,
+          820
+        ],
+        "id": "f0704050-dbbf-4868-b8cd-453ca02e65b2",
+        "name": "Extract from PDF"
+      },
+      {
+        "parameters": {
+          "operation": "text",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.extractFromFile",
+        "typeVersion": 1,
+        "position": [
+          1980,
+          980
+        ],
+        "id": "0e6018df-daca-40aa-8735-b8d486149f49",
+        "name": "Extract Text"
+      },
+      {
+        "parameters": {
+          "mode": "insert",
+          "pineconeIndex": {
+            "__rl": true,
+            "value": "businessdisputerag",
+            "mode": "list",
+            "cachedResultName": "businessdisputerag"
+          },
+          "options": {
+            "pineconeNamespace": "={{ $('EVIDENCE FILE INFO').item.json.namespace }}"
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+        "typeVersion": 1,
+        "position": [
+          3020,
+          1020
+        ],
+        "id": "e260fd12-411a-4b27-a6b2-6872fcdfe757",
+        "name": "Evidence Pinecone Store",
+        "credentials": {
+          "pineconeApi": {
+            "id": "xHVqF7R8bPihp8lN",
+            "name": "PineconeApi account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "options": {
+            "metadata": {
+              "metadataValues": [
+                {
+                  "name": "file_url",
+                  "value": "={{ $('EVIDENCE FILE INFO').item.json.file_url }}"
+                },
+                {
+                  "name": "file_type",
+                  "value": "={{ $('EVIDENCE FILE INFO').item.json.file_type }}"
+                },
+                {
+                  "name": "file_title",
+                  "value": "={{ $('EVIDENCE FILE INFO').item.json.file_title }}"
+                },
+                {
+                  "name": "event_date",
+                  "value": "={{ $('EVIDENCE FILE INFO').item.json.event_date }}"
+                }
+              ]
+            }
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+        "typeVersion": 1,
+        "position": [
+          3160,
+          1240
+        ],
+        "id": "7008afb9-4b50-4979-b291-f975ac0b7484",
+        "name": "Evidence Data Loader"
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+        "typeVersion": 1.2,
+        "position": [
+          2900,
+          1300
+        ],
+        "id": "0087b400-deae-473b-bdeb-145552055615",
+        "name": "Evidence Embedding",
+        "credentials": {
+          "openAiApi": {
+            "id": "Z1j4LkMhoEv4iLCS",
+            "name": "OpenAi account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "text": "={{ $json.name }}",
+          "attributes": {
+            "attributes": [
+              {
+                "name": "namespace",
+                "description": "The category this document belongs to - 'Email', 'TextMessage', 'Audio', 'Video', 'Image', 'BankStatement', 'LegalDocument', 'AccountingRecord'"
+              },
+              {
+                "name": "event_date",
+                "description": "The date of the evidence if it can be determined from the filename in YYYY-MM-DD format"
+              }
+            ]
+          },
+          "options": {
+            "systemPromptTemplate": "=You are an expert evidence classification system for a business dispute case.\nExtract relevant information from the file name/title.\nIf you do not know the value of an attribute asked to extract, you may omit the attribute's value.\n\nDetermine the document category based on its title and file extension. It should be one of: 'Email', 'TextMessage', 'Audio', 'Video', 'Image', 'BankStatement', 'LegalDocument', 'AccountingRecord'\n\nIf the filename contains a date in any format, extract it and convert to YYYY-MM-DD format for the event_date field."
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+        "typeVersion": 1,
+        "position": [
+          1240,
+          880
+        ],
+        "id": "3b37ddc6-4274-4c8c-92b7-794a67b640c1",
+        "name": "Evidence Classifier"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "const chunkSize = 1000;\nconst chunkOverlap = 200;\nconst text = $input.item.json.data.replace(/\\n/, '');\n\nconst chunks = [];\nlet remainingText = text;\n\nwhile (remainingText.length > 0) {\n    let splitPoint;\n\n    // Try splitting at paragraph level first\n    splitPoint = remainingText.lastIndexOf(\"\\n\\n\", chunkSize);\n    \n    // If no paragraph split, try splitting at sentence level\n    if (splitPoint === -1) {\n        splitPoint = remainingText.lastIndexOf(\". \", chunkSize);\n    }\n\n    // If no sentence split, try splitting at word level\n    if (splitPoint === -1) {\n        splitPoint = remainingText.lastIndexOf(\" \", chunkSize);\n    }\n\n    // If still no split point, force cut at chunkSize\n    if (splitPoint === -1 || splitPoint < chunkSize * 0.5) {  \n        splitPoint = chunkSize; // Hard split if no good split point\n    }\n\n    // Extract chunk and adjust remaining text with overlap\n    let chunk = remainingText.substring(0, splitPoint).trim();\n    chunks.push(chunk);\n\n    // Move the pointer forward while keeping the overlap\n    remainingText = remainingText.substring(Math.max(0, splitPoint - chunkOverlap)).trim();\n\n    // Break if remaining text is too small to form another chunk\n    if (remainingText.length < chunkSize * 0.2) {\n        chunks.push(remainingText);\n        break;\n    }\n}\n\nreturn { chunks };"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2340,
+          880
+        ],
+        "id": "23cb854d-4ca0-4b34-bbbd-07ce1d93b106",
+        "name": "Evidence Splitter"
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          1100,
+          820
+        ],
+        "id": "706a4c5b-9168-40b2-9324-3f27d1a2e650",
+        "name": "Loop Over Items"
+      },
+      {
+        "parameters": {
+          "content": "# BUSINESS DISPUTE EVIDENCE RAG SYSTEM\n![Evidence RAG Diagram](https://i.imgur.com/QnR5Jw0.png)\n### Steps – Contextualized Evidence Processing Flow\n1. Monitor Google Drive for new evidence files (emails, texts, documents, audio, video, images).\n2. Classify evidence by type and extract date information.\n3. Process each file type appropriately (text extraction, transcription, etc.).\n4. Break content into chunks with intelligent splitting.\n5. Pass each chunk along with the whole document to an LLM to contextualize.\n6. Convert contextualized chunks into vector embeddings.\n7. Store in Pinecone with rich metadata for retrieval.\n8. Query evidence through a chat interface organized by concepts/events.",
+          "height": 420,
+          "width": 860,
+          "color": 7
+        },
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
+        "position": [
+          0,
+          760
+        ],
+        "id": "51824363-4f5a-45fd-9cd3-c4a944aa034c",
+        "name": "Sticky Note1"
+      },
+      {
+        "parameters": {
+          "operation": "transcribe",
+          "options": {
+            "language": "en",
+            "prompt": "This is an audio recording related to a business dispute between partners JZ and LG regarding financial misappropriation and unauthorized accounts."
+          }
+        },
+        "type": "n8n-nodes-base.openAi",
+        "typeVersion": 1,
+        "position": [
+          1980,
+          1080
+        ],
+        "id": "a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6",
+        "name": "Transcribe Audio",
+        "credentials": {
+          "openAiApi": {
+            "id": "Z1j4LkMhoEv4iLCS",
+            "name": "OpenAi account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "transcribe",
+          "options": {
+            "language": "en",
+            "prompt": "This is a video recording related to a business dispute between partners JZ and LG regarding financial misappropriation and unauthorized accounts."
+          }
+        },
+        "type": "n8n-nodes-base.openAi",
+        "typeVersion": 1,
+        "position": [
+          1980,
+          1180
+        ],
+        "id": "b1c2d3e4-f5g6-h7i8-j9k0-l1m2n3o4p5q6",
+        "name": "Transcribe Video",
+        "credentials": {
+          "openAiApi": {
+            "id": "Z1j4LkMhoEv4iLCS",
+            "name": "OpenAi account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "image",
+          "prompt": "=Describe in detail what you see in this image, focusing on any visible text, numbers, names (especially looking for JZ or LG), dates, financial information, or other elements that might be relevant to a business dispute regarding financial misappropriation. If this appears to be a screenshot of text messages, emails, or financial documents, transcribe all visible text exactly.",
+          "options": {
+            "detailLevel": "high"
+          }
+        },
+        "type": "n8n-nodes-base.openAi",
+        "typeVersion": 1,
+        "position": [
+          1980,
+          1280
+        ],
+        "id": "c1d2e3f4-g5h6-i7j8-k9l0-m1n2o3p4q5r6",
+        "name": "Process Image",
+        "credentials": {
+          "openAiApi": {
+            "id": "Z1j4LkMhoEv4iLCS",
+            "name": "OpenAi account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "parseEmail",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.emailReadImap",
+        "typeVersion": 1,
+        "position": [
+          1980,
+          880
+        ],
+        "id": "d1e2f3g4-h5i6-j7k8-l9m0-n1o2p3q4r5s6",
+        "name": "Parse Email"
+      },
+      {
+        "parameters": {
+          "query": "{{ $body.query }}",
+          "options": {
+            "retriever": {
+              "k": 5,
+              "searchType": "mmr",
+              "lambdaVal": 0.5,
+              "fetchK": 20
+            },
+            "promptTemplate": "=You are an evidence analysis assistant helping with a business dispute case. You have access to various evidence including emails, text messages, audio transcripts, video transcripts, images, bank statements, legal documents, and accounting records.\n\nThe case involves a 50/50 business partnership dispute between JZ and LG at a screen printing and embroidery business. Evidence suggests LG may have misappropriated funds, opened unauthorized accounts, diverted customers, and engaged in other potentially fraudulent activities.\n\nBelow is evidence retrieved from the knowledge base that may help answer the query.\n\n<evidence>\n{{context}}\n</evidence>\n\nPlease analyze the evidence and provide a thorough, fact-based response to the following question:\n{{question}}\n\nBase your answer ONLY on the provided evidence. If the evidence doesn't contain sufficient information to answer, clearly state this rather than speculating. Include specific dates, dollar amounts, and direct quotes when available, and cite the type of document each piece of evidence comes from (email, text message, audio recording, etc.)."
+            }
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.retrievalQaChain",
+        "typeVersion": 1.2,
+        "position": [
+          3200,
+          820
+        ],
+        "id": "e1f2g3h4-i5j6-k7l8-m9n0-o1p2q3r4s5t6",
+        "name": "Evidence Query Chain"
+      },
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "query-evidence",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [
+          3000,
+          680
+        ],
+        "id": "f1g2h3i4-j5k6-l7m8-n9o0-p1q2r3s4t5u6",
+        "name": "Evidence Query Endpoint",
+        "webhookId": "evidence-query"
+      },
+      {
+        "parameters": {
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          3400,
+          680
+        ],
+        "id": "g1h2i3j4-k5l6-m7n8-o9p0-q1r2s3t4u5v6",
+        "name": "Respond with Evidence"
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "typeVersion": 1.2,
+        "position": [
+          3300,
+          940
+        ],
+        "id": "h1i2j3k4-l5m6-n7o8-p9q0-r1s2t3u4v5w6",
+        "name": "Evidence Response LLM",
+        "credentials": {
+          "openAiApi": {
+            "id": "Z1j4LkMhoEv4iLCS",
+            "name": "OpenAi account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "upload-evidence",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [
+          800,
+          680
+        ],
+        "id": "i1j2k3l4-m5n6-o7p8-q9r0-s1t2u3v4w5x6",
+        "name": "Manual Evidence Upload",
+        "webhookId": "evidence-upload"
+      },
+      {
+        "parameters": {
+          "operation": "multipleFiles",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.extractFromFile",
+        "typeVersion": 1,
+        "position": [
+          1980,
+          1380
+        ],
+        "id": "j1k2l3m4-n5o6-p7q8-r9s0-t1u2v3w4x5y6",
+        "name": "Process Json Exports"
+      }
+    ],
+    "pinData": {},
+    "connections": {
+      "PDF TO DATA": {
+        "main": [
+          [
+            {
+              "node": "Document Data",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Document Data": {
+        "main": [
+          [
+            {
+              "node": "Evidence Splitter",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Evidence Trigger": {
+        "main": [
+          [
+            {
+              "node": "Loop Over Items",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Split Chunks": {
+        "main": [
+          [
+            {
+              "node": "Evidence Context Chain",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Google Gemini Chat Model": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "Evidence Context Chain",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Evidence Context Chain": {
+        "main": [
+          [
+            {
+              "node": "Summarize",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Summarize": {
+        "main": [
+          [
+            {
+              "node": "Evidence Pinecone Store",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Character Text Splitter": {
+        "ai_textSplitter": [
+          [
+            {
+              "node": "Evidence Data Loader",
+              "type": "ai_textSplitter",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenAI Chat Model2": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "Evidence Classifier",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "EVIDENCE FILE INFO": {
+        "main": [
+          [
+            {
+              "node": "EVIDENCE GOOGLE DRIVE",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "EVIDENCE GOOGLE DRIVE": {
+        "main": [
+          [
+            {
+              "node": "EVIDENCE TYPE SWITCH",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "EVIDENCE TYPE SWITCH": {
+        "main": [
+          [
+            {
+              "node": "Extract from PDF",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Extract Text",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Parse Email",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Transcribe Audio",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Transcribe Video",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Process Image",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extract from PDF": {
+        "main": [
+          [
+            {
+              "node": "PDF TO DATA",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extract Text": {
+        "main": [
+          [
+            {
+              "node": "Document Data",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Evidence Data Loader": {
+        "ai_document": [
+          [
+            {
+              "node": "Evidence Pinecone Store",
+              "type": "ai_document",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Evidence Embedding": {
+        "ai_embedding": [
+          [
+            {
+              "node": "Evidence Pinecone Store",
+              "type": "ai_embedding",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Evidence Classifier": {
+        "main": [
+          [
+            {
+              "node": "EVIDENCE FILE INFO",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Evidence Splitter": {
+        "main": [
+          [
+            {
+              "node": "Split Chunks",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Loop Over Items": {
+        "main": [
+          [],
+          [
+            {
+              "node": "Evidence Classifier",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Evidence Pinecone Store": {
+        "main": [
+          [
+            {
+              "node": "Loop Over Items",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Transcribe Audio": {
+        "main": [
+          [
+            {
+              "node": "Document Data",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Transcribe Video": {
+        "main": [
+          [
+            {
+              "node": "Document Data",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Process Image": {
+        "main": [
+          [
+            {
+              "node": "Document Data",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse Email": {
+        "main": [
+          [
+            {
+              "node": "Document Data",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Evidence Query Chain": {
+        "main": [
+          [
+            {
+              "node": "Respond with Evidence",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Evidence Query Endpoint": {
+        "main": [
+          [
+            {
+              "node": "Evidence Query Chain",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Evidence Response LLM": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "Evidence Query Chain",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Manual Evidence Upload": {
+        "main": [
+          [
+            {
+              "node": "Evidence Classifier",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Process Json Exports": {
+        "main": [
+          [
+            {
+              "node": "Document Data",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "active": true,
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "versionId": "71e5253b-2823-4754-b717-ebada256e91b",
+    "meta": {
+      "templateCredsSetupCompleted": true,
+      "instanceId": "27621fde0c61263d828907daf729fd74f7f9a5d6430ebdc77a059e91a0088b90"
+    },
+    "id": "T6fLl322Sg1VI485",
+    "tags": []
+  }
